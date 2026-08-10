@@ -243,36 +243,37 @@ def call_stored_procedure(params: dict|None, table: str= None):
     # never use f-strings for procedure names — whitelist them
     db = get_db_connection()
     try:
-        # # Build parameter placeholders for the stored procedure
-        # query = text(f"""
-        # SET NOCOUNT ON;
-        # DECLARE @RC int
-        # DECLARE @InputTableName nvarchar(261)
-        # DECLARE @SummaryJson nvarchar(max)
+        # Build parameter placeholders for the stored procedure
+        query = text(f"""
+        SET NOCOUNT ON;
+        DECLARE @RC int
+        DECLARE @InputTableName nvarchar(261)
+        DECLARE @SummaryJson nvarchar(max)
 
-        # -- TODO: Set parameter values here.
-        # SET @InputTableName = :table_name
-        # EXECUTE @RC = [dbo].[ProcessCalInput] 
-        # @InputTableName
-        # ,@SummaryJson OUTPUT
+        -- TODO: Set parameter values here.
+        SET @InputTableName = :table_name
+        EXECUTE @RC = [dbo].[ProcessCalInput] 
+        @InputTableName
+        ,@SummaryJson OUTPUT
 
-        # SELECT @SummaryJson AS SummaryJson
+        SELECT @SummaryJson AS SummaryJson
 
-        # """)
+        """)
         
-        # result = db.execute(query, {"table_name": table }).fetchone()
+        result = db.execute(query, {"table_name": table }).fetchone()
 
-        query = text(f"UPDATE {table} SET code = 3 WHERE code = 0")  # Example query, replace with your actual stored procedure call
-        result = db.execute(query)
+        # -- Test code
+        # query = text(f"UPDATE {table} SET code = 3 WHERE code = 0")  # Example query, replace with your actual stored procedure call
+        # result = db.execute(query)
 
-        #id_in = [(80716,), (80726,), (80736,), (80773,), (80787,)]
-        query = text(f"UPDATE {table} SET code = 2 WHERE Id IN (80716, 80726, 80736, 80773, 80787)")  # Updated query for IN clause
-        result = db.execute(query)
-        
+        # #id_in = [(80716,), (80726,), (80736,), (80773,), (80787,)]
+        # query = text(f"UPDATE {table} SET code = 2 WHERE Id IN (80716, 80726, 80736, 80773, 80787)")  # Updated query for IN clause
+        # result = db.execute(query)
+        # -- Test code End        
 
         db.commit()
-        #return result
-        return {"SummaryJson": "Success"}
+        return result
+        #return {"SummaryJson": "Success"}
     except Exception as exc:
         logger.exception(f"Error calling stored procedure {table}")
         raise
@@ -328,7 +329,7 @@ def sanitize_file(
         columns={"Hash": "hashInput"},
         inplace=True
     )
-    df["code"] = 3 # This is default # 5	Not found	No match found after completing the matching process
+    df["code"] = 5 # This is default # 5	Not found	No match found after completing the matching process
     logger.info(f"Loading into Table: {table}")
     load_to_sql(df, table , "input")
     logger.info(f"Processing Query: {table}")
