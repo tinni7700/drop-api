@@ -114,75 +114,77 @@ def main():
 
     # Check if Table is already exists into db
     # log the files in the db to process for matching and uploading
-    # read file into pandas and generate table for it
-    for file in files:
-        file_path = os.path.join(read_folder, file)
-        output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_final.csv")
-        table_name = f"DROP_{os.path.splitext(file)[0]}"
-        # read file into pandas and generate table for it 
-        # update the status of the file in the db to processing
-
-
-        # log table into db for processing...
-        check_result = check_table(
-            table=table_name
-        )
-
-        if check_result.get("status") == True:
-
-            result= drop_table(
-                table=table_name
-            )
-            logger.info(
-                check_result.get("message", f"Table {table_name} already exists. Skipping file {file}.")
-            )
-
-        result = sanitize_file(
-            file_path=file_path,
-            output_path=output_path,
-            table= table_name,
-            columns_to_ascii=["Hash"]
-        )
-
-        if result.get("status") == True:
-            logger.info(f"File {file} sanitized successfully.")
-            # update the status of the file in the db to processed
-        
-    
-    logger.info("--------------- All files processed successfully.---------------")
-    # random_num = random.randint(1, 100)
-    # # prepare file for write
+    # # read file into pandas and generate table for it
     # for file in files:
     #     file_path = os.path.join(read_folder, file)
+    #     output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_final.csv")
     #     table_name = f"DROP_{os.path.splitext(file)[0]}"
-        
+    #     # read file into pandas and generate table for it 
+    #     # update the status of the file in the db to processing
 
-    #     output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}_final.csv")
 
-    #     result = check_table(
+    #     # log table into db for processing...
+    #     check_result = check_table(
     #         table=table_name
     #     )
 
-    #     if result.get("status") == False:
-    #         logger.info(
-    #             result.get("message", f"Table {table_name} does not exist. Skipping file {file}.")
-    #         )
-    #         continue
+    #     if check_result.get("status") == True:
 
-    #     result = read_from_db_to_write(
-    #         table_name,
-    #         output_path
+    #         result= drop_table(
+    #             table=table_name
+    #         )
+    #         logger.info(
+    #             check_result.get("message", f"Table {table_name} already exists. Skipping file {file}.")
+    #         )
+
+    #     result = sanitize_file(
+    #         file_path=file_path,
+    #         output_path=output_path,
+    #         table= table_name,
+    #         columns_to_ascii=["Hash"]
     #     )
+
     #     if result.get("status") == True:
-    #         logger.info(
-    #             result.get("message", f"File {file} read successfully and saved to {output_path}.")
-    #         )
+    #         logger.info(f"File {file} sanitized successfully.")
+    #         # update the status of the file in the db to processed
+        
+    
+    # logger.info("--------------- All files processed successfully.---------------")
+    random_num = random.randint(1, 100)
+    # prepare file for write
+    for file in files:
+        file_path = os.path.join(read_folder, file)
+        table_name = f"DROP_{os.path.splitext(file)[0]}"
+        
 
-    #     # update the status of the file in the db to ready for upload
-    #     update_status(
-    #         file_name=file,
-    #         status=1
-    #     )
+        output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}_final.csv")
+
+        result = check_table(
+            table=table_name
+        )
+
+        if result.get("status") == False:
+            logger.info(
+                result.get("message", f"Table {table_name} does not exist. Skipping file {file}.")
+            )
+            continue
+
+        result = read_from_db_to_write(
+            table_name,
+            output_path
+        )
+        if result.get("status") == True:
+            logger.info(
+                result.get("message", f"File {file} read successfully and saved to {output_path}.")
+            )
+
+        # update the status of the file in the db to ready for upload
+        update_status(
+            file_name=file,
+            status=1
+        )
+    
+    logger.info("--------------- All files written successfully.---------------")
 
 
 
