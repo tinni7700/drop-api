@@ -151,69 +151,70 @@ def main():
     
     # logger.info("--------------- All files processed successfully.---------------")
     random_num = random.randint(1, 100)
-    # prepare file for write
-    for file in files:
-        file_path = os.path.join(read_folder, file)
-        table_name = f"DROP_{os.path.splitext(file)[0]}"
+    # # prepare file for write
+    # for file in files:
+    #     file_path = os.path.join(read_folder, file)
+    #     table_name = f"DROP_{os.path.splitext(file)[0]}"
         
 
-        output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}_final.csv")
+    #     output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}_final.csv")
 
-        result = check_table(
-            table=table_name
-        )
+    #     result = check_table(
+    #         table=table_name
+    #     )
 
-        if result.get("status") == False:
-            logger.info(
-                result.get("message", f"Table {table_name} does not exist. Skipping file {file}.")
-            )
-            continue
+    #     if result.get("status") == False:
+    #         logger.info(
+    #             result.get("message", f"Table {table_name} does not exist. Skipping file {file}.")
+    #         )
+    #         continue
 
-        result = read_from_db_to_write(
-            table_name,
-            output_path
-        )
-        if result.get("status") == True:
-            logger.info(
-                result.get("message", f"File {file} read successfully and saved to {output_path}.")
-            )
+    #     result = read_from_db_to_write(
+    #         table_name,
+    #         output_path
+    #     )
+    #     if result.get("status") == True:
+    #         logger.info(
+    #             result.get("message", f"File {file} read successfully and saved to {output_path}.")
+    #         )
 
-        # update the status of the file in the db to ready for upload
-        update_status(
-            file_name=file,
-            status=1
-        )
+    #     # update the status of the file in the db to ready for upload
+    #     update_status(
+    #         file_name=file,
+    #         status=1
+    #     )
     
-    logger.info("--------------- All files written successfully.---------------")
+    # logger.info("--------------- All files written successfully.---------------")
 
 
 
             
 
-    # # Upload files
-    # for file in files:
-    #     output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}_final.csv")
+    # Upload files
+    random_num = 50
+    for file in files:
+        output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}_final.csv")
 
-    #     if not os.path.exists(output_path):
-    #         logger.error(f"File {output_path} does not exist. Skipping upload.")
-    #         continue
+        if not os.path.exists(output_path):
+            logger.error(f"File {output_path} does not exist. Skipping upload.")
+            continue
 
-    #     logger.info(f"Uploading file {output_path}...")
-    #     response = amend_csv_file(
-    #         url=url_mapping["upload"],
-    #         http_client=http_client,
-    #         file_path=output_path
-    #     )
-    #     logger.info(f"Upload response for {file}: {response}")
+        logger.info(f"Uploading file {output_path}...")
+        response = amend_csv_file(
+            url=url_mapping["upload"],
+            http_client=http_client,
+            file_path=output_path
+        )
+        logger.info(f"Upload response for {file}: {response}")
 
-    #     if response.get("acceptedCount"):
-    #         # update the status of the file in the db to uploaded
-    #         update_status(
-    #             file_name=file,
-    #             status=2
-    #         )
+        if response.get("acceptedCount"):
+            # update the status of the file in the db to uploaded
+            update_status(
+                file_name=file,
+                status=2
+            )
 
-    # logger.info("--------------- All files processed and uploaded successfully.---------------")
+    logger.info("--------------- All files processed and uploaded successfully.---------------")
 
     # Amend files if your file is not uploaded successfully or you want to amend the file and reupload the file
 
