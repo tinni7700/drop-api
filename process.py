@@ -1,4 +1,5 @@
 import base64
+import csv
 import hashlib
 import json
 import re
@@ -160,7 +161,7 @@ def write_file(df: pd.DataFrame, output_path: str, ext: str) -> str:
     path = Path(output_path)
 
     if ext == ".csv":
-        df.to_csv(path, index=False, encoding="utf-8", mode="w")
+        df.to_csv(path, index=False, encoding="utf-8", mode="w", quoting=csv.QUOTE_ALL)
 
     elif ext in {".xlsx", ".xls"}:
         df.to_excel(path, index=False, engine="calamine")
