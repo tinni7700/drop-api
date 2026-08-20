@@ -1,5 +1,8 @@
+from pathlib import Path
 from posixpath import dirname
 import random
+
+import typer
 from config import settings
 from http_client import HttpClient
 from logger import logger
@@ -71,6 +74,257 @@ def exclude_files(folder_name, exclude_names=None, exclude_exts=None):
     ]
     return files
 
+
+def request_for_file(url, http_client: HttpClient, file_path=None):
+
+    result = http_client.get(
+        url=url, accept="*/*", file_path=file_path
+    )
+
+    return result
+
+
+def create_app_context() -> HttpClient:
+    http_client = HttpClient(api_key=settings.X_API_KEY)
+    http_client.set_logger(logger)
+    return http_client
+
+
+app = typer.Typer(
+    name="drop-api",
+    help="DROP BROKER API",
+    add_completion=False,
+)
+
+@app.command()
+def requestbatch():
+    """Upload file
+    Example: uv run main.py requestbatch
+    """
+    try:
+        http_client = create_app_context()
+        response = request_for_file(
+            url=url_mapping["download"],
+            http_client=http_client,
+            file_path=None,
+        )
+        logger.info(f"Requestfile response: {response}")
+
+    except Exception as e:
+        logger.error(f"Error in requestbatch: {e}")
+        raise
+
+@app.command()
+def download():
+    """Download file
+    Example: uv run main.py download 
+    """    
+    try:
+        http_client = create_app_context()
+        timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        file_path = f"{generate_folder_name(timestamp)}/{generate_file_name(timestamp)}"   
+
+        response = download_file(
+            url=url_mapping["download"],
+            http_client=http_client,
+            file_path=file_path,
+        )
+        logger.info(f"Download response: {response}")
+
+        if isinstance(response, str) and response.startswith("File saved to"):
+            unzip_file(zip_file_path=file_path, extract_to_folder=dirname(file_path))
+
+        # log the files in the folder and display to user and stored into db for further processing
+        read_folder = dirname(file_path)
+        files = exclude_files(read_folder)
+        logger.info(f"Files in the folder: {files}")
+
+        # do you want to upload file into cloud azureblob
+        insert_to_db(
+            files=files,
+            folder_name=read_folder
+
+        )
+
+        logger.info("--------------- All files downloaded successfully.---------------")
+    except Exception as e:
+        logger.error(f"Error in downloading file: {e}")
+        raise        
+
+@app.command()
+def processfile(
+    file_path:str = typer.Option(
+            ..., "--filepath", "-f",
+            help="File path for processing file",
+        )
+):
+    """Start processing file
+    Example: uv run main.py processfile --filepath "uploads/2026-08-19-13-31-19/output-2026-08-19-13-31-19.zip"
+    """
+    try:
+
+        file_path = Path(file_path)
+        if not file_path.exists():
+            logger.error(f"Error in file does not exits: {e}")
+            raise typer.Exit()
+
+        read_folder = dirname(file_path)
+        files = exclude_files(read_folder)
+        logger.info(f"Files in the folder: {files}")
+
+
+        # Check if Table is already exists into db
+        # log the files in the db to process for matching and uploading
+        # read file into pandas and generate table for it
+        for file in files:
+            file_path = os.path.join(read_folder, file)
+            output_path = None # does not require file here
+            table_name = f"DROP_{os.path.splitext(file)[0]}"
+            # read file into pandas and generate table for it 
+            # update the status of the file in the db to processing
+
+
+            # log table into db for processing...
+            check_result = check_table(
+                table=table_name
+            )
+
+            if check_result.get("status") == True:
+
+                result= drop_table(
+                    table=table_name
+                )
+                logger.info(
+                    check_result.get("message", f"Table {table_name} already exists. Skipping file {file}.")
+                )
+
+            result = sanitize_file(
+                file_path=file_path,
+                output_path=output_path,
+                table= table_name,
+                columns_to_ascii=["Hash"]
+            )
+
+            if result.get("status") == True:
+                logger.info(f"File {file} sanitized successfully.")
+                # update the status of the file in the db to processed
+            
+        
+        logger.info("--------------- All files processed successfully.---------------")        
+    except Exception as e:
+        logger.error(f"Error in processing : {e}")
+        raise
+
+@app.command()
+def exportfile(
+    file_path:str = typer.Option(
+            ..., "--filepath", "-f",
+            help="File path for processing file",
+        )
+):
+    """Export file
+    Example: uv run main.py exportfile --filepath "uploads/2026-08-19-13-31-19/output-2026-08-19-13-31-19.zip"    
+    """
+    try:
+        file_path = Path(file_path)
+        if not file_path.exists():
+            logger.error(f"Error in file does not exits: {e}")
+            raise typer.Exit()
+
+        read_folder = dirname(file_path)
+        files = exclude_files(read_folder)
+        logger.info(f"Files in the folder: {files}")
+
+
+        # prepare file for write
+        random_num = datetime.now().strftime("%Y%m")
+        for file in files:
+            file_path = os.path.join(read_folder, file)
+            table_name = f"DROP_{os.path.splitext(file)[0]}"
+            
+
+            output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}final.csv")
+
+            result = check_table(
+                table=table_name
+            )
+
+            if result.get("status") == False:
+                logger.info(
+                    result.get("message", f"Table {table_name} does not exist. Skipping file {file}.")
+                )
+                continue
+
+            result = read_from_db_to_write(
+                table_name,
+                output_path
+            )
+            if result.get("status") == True:
+                logger.info(
+                    result.get("message", f"File {file} read successfully and saved to {output_path}.")
+                )
+
+            # update the status of the file in the db to ready for upload
+            update_status(
+                file_name=file,
+                status=1
+            )
+        
+        logger.info("--------------- All files written successfully.---------------")
+    except Exception as e:
+        logger.error(f"Error in export file : {e}")
+        raise
+
+
+@app.command()
+def uploadfile(
+    file_path:str = typer.Option(
+            ..., "--filepath", "-f",
+            help="File path for exportfile",
+        )
+):
+    """Upload file
+    Example: uv run main.py uploadfile --filepath "uploads/2026-08-19-13-31-19/output-2026-08-19-13-31-19.zip"
+    """    
+    try:
+        file_path = Path(file_path)
+        if not file_path.exists():
+            logger.error(f"Error in file does not exits: {e}")
+            raise typer.Exit()
+
+        read_folder = dirname(file_path)
+        files = exclude_files(read_folder)
+        logger.info(f"Files in the folder: {files}")
+
+        http_client = create_app_context()
+        random_num = datetime.now().strftime("%Y%m")
+        for file in files:
+            output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}final.csv")
+
+            if not os.path.exists(output_path):
+                logger.error(f"File {output_path} does not exist. Skipping upload.")
+                continue
+
+            logger.info(f"Uploading file {output_path}...")
+            response = amend_csv_file(
+                url=url_mapping["upload"],
+                http_client=http_client,
+                file_path=output_path
+            )
+            logger.info(f"Upload response for {file}: {response}")
+
+            if response.get("acceptedCount"):
+                # update the status of the file in the db to uploaded
+                update_status(
+                    file_name=file,
+                    status=2
+                )
+
+        logger.info("--------------- All files processed and uploaded successfully.---------------")
+
+    except Exception as e:
+        logger.error(f"Error in upload file : {e}")
+        raise
 
 
 
@@ -239,4 +493,4 @@ def main():
 # 6. if any error occurs, log the error and stop the process and amend the files
 
 if __name__ == "__main__":
-    main()
+    app()

@@ -33,6 +33,8 @@ class HttpClient:
                 return f"File saved to {file_path}"
             elif accept == "application/json":
                 return response.json()
+            elif accept == "*/*":
+                return response.status_code
             else:
                 return response.content
         except requests.RequestException as e:
