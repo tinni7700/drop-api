@@ -237,7 +237,7 @@ def exportfile(
 
 
         # prepare file for write
-        random_num = datetime.now().strftime("%Y%m")
+        random_num = datetime.now().strftime("%d%m")
         for file in files:
             file_path = os.path.join(read_folder, file)
             table_name = f"DROP_{os.path.splitext(file)[0]}"
@@ -297,7 +297,7 @@ def uploadfile(
         logger.info(f"Files in the folder: {files}")
 
         http_client = create_app_context()
-        random_num = datetime.now().strftime("%Y%m")
+        random_num = datetime.now().strftime("%d%m")
         for file in files:
             output_path = os.path.join(read_folder, f"{os.path.splitext(file)[0]}_{random_num}final.csv")
 
