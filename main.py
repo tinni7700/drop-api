@@ -295,7 +295,10 @@ def exportfile(
     Example: uv run main.py exportfile --filepath "uploads/2026-08-19-13-31-19/output-2026-08-19-13-31-19.zip"
     """
     try:
-        run_export(_folder_from_option(file_path), datetime.now().strftime("%d%m"))
+        outputs = run_export(_folder_from_option(file_path), datetime.now().strftime("%d%m"))
+        for path in outputs:
+            fix_header_quotes(path)  # sed -i '1s/"//g'
+            logger.info(f"Header fixed: {path}")
         logger.info("--------------- All files written successfully.---------------")
     except Exception as e:
         logger.error(f"Error in export file : {e}")
