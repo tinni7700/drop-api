@@ -186,7 +186,7 @@ def run_process(read_folder):
             table=table_name,
             columns_to_ascii=["Hash"],
         )
-        if result.get("status") == True:
+        if result.get("success") == True or result.get("status") == True:
             logger.info(f"File {file} sanitized successfully.")
         else:
             raise RuntimeError(f"Sanitize failed for {file}: {result}")
