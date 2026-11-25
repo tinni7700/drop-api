@@ -10,6 +10,8 @@ from http_client import HttpClient
 from logger import logger
 from datetime import datetime
 import os
+import shutil
+import tempfile
 
 from process import check_table, insert_to_db, read_from_db_to_write, sanitize_file, update_status, drop_table
 
@@ -49,11 +51,8 @@ def generate_file_name(timestamp):
     return f"output-{timestamp}.zip"
 
 def generate_folder_name(timestamp=None):
-    folder_name = f"uploads/{timestamp}"
-    if not os.path.exists(folder_name):
-        os.makedirs(folder_name)
-
-    return folder_name
+    # Only builds the path. run_download creates it after a successful download.
+    return f"uploads/{timestamp}"
 
 url_mapping = {
     "download": f"{settings.BASE_URL}/data/download",
@@ -126,19 +125,32 @@ def run_request_batch(http_client):
 
 
 def run_download(http_client):
-    """Download + unzip + register in DB. Returns the folder holding the CSVs."""
+    """Download + unzip + register in DB. Returns the folder holding the CSVs.
+    The uploads/<timestamp> folder is created only when a zip was actually received."""
     timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    file_path = f"{generate_folder_name(timestamp)}/{generate_file_name(timestamp)}"
+    read_folder = generate_folder_name(timestamp)          # path only, nothing created yet
+    file_path = f"{read_folder}/{generate_file_name(timestamp)}"
 
-    response = download_file(
-        url=url_mapping["download"], http_client=http_client, file_path=file_path
-    )
-    logger.info(f"Download response: {response}")
+    # download into a temp file first
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".zip")
+    os.close(tmp_fd)
+    try:
+        response = download_file(
+            url=url_mapping["download"], http_client=http_client, file_path=tmp_path
+        )
+        logger.info(f"Download response: {response}")
 
-    if not (isinstance(response, str) and response.startswith("File saved to")):
-        raise RuntimeError(f"Download did not return a zip file: {response!r}")
+        if not (isinstance(response, str) and response.startswith("File saved to")):
+            raise RuntimeError(f"Download did not return a zip file: {response!r}")
 
-    read_folder = dirname(file_path)
+        # success: now create the folder and move the zip into it
+        os.makedirs(read_folder, exist_ok=True)
+        shutil.move(tmp_path, file_path)
+        logger.info(f"Zip saved to {file_path}")
+    finally:
+        if os.path.exists(tmp_path):   # still there = download failed
+            os.remove(tmp_path)
+
     unzip_file(zip_file_path=file_path, extract_to_folder=read_folder)
     files = exclude_files(read_folder)
     logger.info(f"Files in the folder: {files}")
